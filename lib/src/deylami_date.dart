@@ -4,17 +4,58 @@ import 'gregorian_date.dart';
 import 'jalali_date.dart';
 import 'pcal_exception.dart';
 
+/// A date in the Deylami (Gilaki / Dilami) calendar.
+///
+/// A year has twelve months of 30 days, numbered `1` to `12`, and a short month
+/// `0`, the Panjik (پنجيک), of five days. The Panjik sits between months 8 and
+/// 9. In a leap year the Panjik has a sixth day, the Vishak, which is day `0`
+/// of month `0`.
+///
+/// The year starts on 17 Mordad of the Jalali calendar, and a year is a leap
+/// year when the Jalali year [year] - 195 is a leap year. Supported years are
+/// [minYear] to [maxYear].
+///
+/// ```dart
+/// final date = DeylamiDate(1600, 3, 4);
+/// print(date.monthName); // أرئه ما
+/// print(date.toGregorian()); // 2026-10-10
+/// ```
 class DeylamiDate extends CalendarDate {
+  /// Creates a date from a Deylami [year], [month] and [day].
+  ///
+  /// The [month] is `0` for the Panjik and `1` to `12` for the other months.
+  /// The [day] is `1` to `30` (`1` to `5` in the Panjik). The Vishak is day `0`
+  /// of month `0`, and exists only in leap years.
+  ///
+  /// Throws an [InvalidYearException] if [year] is not between [minYear] and
+  /// [maxYear], an [InvalidMonthException] if [month] is not between `0` and
+  /// `12`, and an [InvalidDayException] if [day] is not between `0` and `30`,
+  /// if [day] is `0` outside the Panjik, or if the date is outside the
+  /// supported range. Throws an [InvalidPanjikException] if [day] is greater
+  /// than `5` in the Panjik, and an [InvalidVishakException] for the Vishak of
+  /// a year that is not a leap year.
   DeylamiDate(int year, int month, int day)
     : super(year, month, day, _checkedJulianDayNumber(year, month, day));
 
+  /// Creates the Deylami date of the calendar day that [dateTime] falls on.
+  ///
+  /// The time of day and the time zone of [dateTime] are ignored, so the day is
+  /// the one [dateTime] reports in its own time zone.
+  ///
+  /// Throws an [InvalidDayException] if that day is outside the supported
+  /// Deylami range.
   factory DeylamiDate.fromDateTime(DateTime dateTime) =>
       DeylamiDate.fromJulianDayNumber(
         GregorianDate.fromDateTime(dateTime).julianDayNumber,
       );
 
+  /// Creates the Deylami date of today, in the local time zone of the device.
   factory DeylamiDate.now() => DeylamiDate.fromDateTime(DateTime.now());
 
+  /// Creates the date that falls on the given [julianDayNumber].
+  ///
+  /// Throws an [InvalidDayException] if [julianDayNumber] is before
+  /// [minJulianDayNumber] or after [maxJulianDayNumber].
   factory DeylamiDate.fromJulianDayNumber(int julianDayNumber) {
     if (julianDayNumber < minJulianDayNumber ||
         julianDayNumber > maxJulianDayNumber) {
@@ -33,14 +74,24 @@ class DeylamiDate extends CalendarDate {
     return DeylamiDate(year, month, day);
   }
 
+  /// The first supported year, `195`.
   static const int minYear = 195;
 
+  /// The last supported year, `3372`.
   static const int maxYear = 3372;
 
+  /// The Julian day number of 1 Farvardin of Jalali year 1, the first supported
+  /// day.
   static final int minJulianDayNumber = jalaliJulianDayNumber(1, 1, 1);
 
+  /// The Julian day number of 16 Mordad of Jalali year 3178, the last supported
+  /// day.
   static final int maxJulianDayNumber = jalaliJulianDayNumber(3178, 5, 16);
 
+  /// The Deylami names of the months.
+  ///
+  /// The list is indexed by the month number, so `monthNames[0]` is the Panjik
+  /// (`پنجيک`) and `monthNames[1]` is `نؤرۊز ما`.
   static const List<String> monthNames = [
     'پنجيک',
     'نؤرۊز ما',
@@ -57,6 +108,11 @@ class DeylamiDate extends CalendarDate {
     'اسفندار ما',
   ];
 
+  /// The Deylami names of the weekdays, starting with Saturday.
+  ///
+  /// The list is indexed from Saturday at `0`, so `weekdayNames[0]` is `شمبه`
+  /// and `weekdayNames[6]` is `جۊمه` (Friday). Note that this is not the same
+  /// order as [weekday], which starts on Monday.
   static const List<String> weekdayNames = [
     'شمبه',
     'یکشمبه',
@@ -67,6 +123,10 @@ class DeylamiDate extends CalendarDate {
     'جۊمه',
   ];
 
+  /// How each Deylami month maps to Jalali months, indexed by Deylami month.
+  ///
+  /// Months 0 and 8 contain the Panjik and the Jalali year boundary, so they
+  /// are handled separately and their entries are unused.
   static const List<_ToJalaliRule> _toJalaliRules = [
     _ToJalaliRule(0, 0, 0),
     _ToJalaliRule(15, 5, 16),
@@ -83,6 +143,10 @@ class DeylamiDate extends CalendarDate {
     _ToJalaliRule(14, 4, 17),
   ];
 
+  /// How each Jalali month maps to Deylami months, indexed by Jalali month.
+  ///
+  /// Month 1 contains the Panjik, so it is handled separately and its entry is
+  /// unused. The entry at index 0 does not belong to any month.
   static const List<_FromJalaliRule> _fromJalaliRules = [
     _FromJalaliRule(0, 0),
     _FromJalaliRule(0, 0),
@@ -99,8 +163,16 @@ class DeylamiDate extends CalendarDate {
     _FromJalaliRule(14, 8),
   ];
 
+  /// Whether [year] is a Deylami leap year.
+  ///
+  /// A Deylami year is a leap year when the Jalali year `year - 195` is a leap
+  /// year.
   static bool isLeap(int year) => JalaliDate.isLeap(year - 195);
 
+  /// Returns the number of days in the given [month] of the given [year].
+  ///
+  /// The Panjik (month `0`) has 6 days in a leap year, counting the Vishak, and
+  /// 5 days otherwise. Every other month has 30 days.
   static int daysInMonthOf(int year, int month) {
     if (month == 0) {
       return isLeap(year) ? 6 : 5;
@@ -124,10 +196,12 @@ class DeylamiDate extends CalendarDate {
   DeylamiDate addDays(int days) =>
       DeylamiDate.fromJulianDayNumber(julianDayNumber + days);
 
+  /// Returns the date as `YYYY-MM-DD`, for example `1600-03-04`.
   @override
   String toString() =>
       '${padNumber(year, 4)}-${padNumber(month, 2)}-${padNumber(day, 2)}';
 
+  /// Validates the fields and returns the Julian day number of the date.
   static int _checkedJulianDayNumber(int year, int month, int day) {
     if (year < minYear || year > maxYear) {
       throw InvalidYearException(
@@ -178,6 +252,7 @@ class DeylamiDate extends CalendarDate {
     return julianDayNumber;
   }
 
+  /// Converts a Deylami date to a Jalali `(year, month, day)` record.
   static (int, int, int) _toJalaliFields(int year, int month, int day) {
     if (month == 0) {
       return (year - 194, 1, day == 0 ? 15 : day + 15);
@@ -197,6 +272,7 @@ class DeylamiDate extends CalendarDate {
     return (jalaliYear, rule.jalaliMonth + 1, day - rule.pivotDay);
   }
 
+  /// Converts a Jalali date to a Deylami `(year, month, day)` record.
   static (int, int, int) _fromJalaliFields(
     int jalaliYear,
     int jalaliMonth,
@@ -232,6 +308,7 @@ class DeylamiDate extends CalendarDate {
   }
 }
 
+/// The rule that maps one Deylami month to Jalali months.
 class _ToJalaliRule {
   const _ToJalaliRule(
     this.pivotDay,
@@ -246,6 +323,7 @@ class _ToJalaliRule {
   final int beforePivotOffset;
 }
 
+/// The rule that maps one Jalali month to Deylami months.
 class _FromJalaliRule {
   const _FromJalaliRule(this.pivotDay, this.monthAfterPivot);
 
