@@ -1,0 +1,13 @@
+name: pcal
+description: Calendar converter between Gregorian, Jalali, Japanese and Deylami calendars.
+version: 1.0.0
+homepage: https://github.com/psdkjoon/pcal
+repository: https://github.com/psdkjoon/pcal
+issue_tracker: https://github.com/psdkjoon/pcal/issues
+topics:
+  - calendars
+  - deylami
+  - jalali
+
+environment:
+  sdk: ^3.0.0
